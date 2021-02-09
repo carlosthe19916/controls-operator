@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {name}-keycloak-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: db
+      tackle: {name}
+  template:
+    metadata:
+      labels:
+        app: db
+        tackle: {name}
+    spec:
+      containers:
+        - name: postgresql
+          image: postgres:13.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 5432
+              protocol: TCP
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak-db
+                  key: POSTGRES_DATABASE
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak-db
+                  key: POSTGRES_USERNAME
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak-db
+                  key: POSTGRES_PASSWORD
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - exec pg_isready --host $POD_IP
+            initialDelaySeconds: 60
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - exec pg_isready --host $POD_IP
+            initialDelaySeconds: 20
+            timeoutSeconds: 3
+            periodSeconds: 5
+          volumeMounts:
+            - name: postgresql-pvol
+              mountPath: "/var/lib/pgsql/data"
+      volumes:
+        - name: postgresql-pvol
+          persistentVolumeClaim:
+            claimName: {name}-keycloak-db

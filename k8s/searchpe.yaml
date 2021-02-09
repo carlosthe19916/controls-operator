@@ -1,0 +1,6 @@
+apiVersion: project.openubl/v1
+kind: Searchpe
+metadata:
+  name: hellows
+spec:
+  {}

@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {name}-keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+      tackle: {name}
+  template:
+    metadata:
+      labels:
+        app: keycloak
+        tackle: {name}
+    spec:
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:12.0.2
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: KEYCLOAK_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak
+                  key: KEYCLOAK_USER
+            - name: KEYCLOAK_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak
+                  key: KEYCLOAK_PASSWORD
+            - name: PROXY_ADDRESS_FORWARDING
+              value: "true"
+            - name: DB_VENDOR
+              value: "postgres"
+            - name: DB_ADDR
+              value: "{name}-keycloak-db"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak-db
+                  key: POSTGRES_DATABASE
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak-db
+                  key: POSTGRES_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {name}-keycloak-db
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: "/auth"
+              port: 8080
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: "/auth"
+              port: 8080
+            initialDelaySeconds: 60
+            timeoutSeconds: 10
+#          volumeMounts:
+#            - name: realm-config
+#              mountPath: /tmp/realm.json
+#              subPath: realm.json
+#              readOnly: true
+#      volumes:
+#        - name: realm-config
+#          configMap:
+#            name: {name}-keycloak
+#            items:
+#              - key: realm.json
+#                path: realm.json
